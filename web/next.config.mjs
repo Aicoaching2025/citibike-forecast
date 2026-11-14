@@ -8,6 +8,8 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // Self-contained server bundle for containers (Cloud Run). Ignored by Vercel.
+  output: "standalone",
   poweredByHeader: false,
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
