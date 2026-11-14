@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --surface: 248 248 246;
+  --panel: 255 255 255;
+  --ink: 17 17 16;
+  --muted: 98 97 92;
+  --line: 228 227 223;
+  --accent: 42 120 214;
+  --good: 12 140 12;
+  --warn: 214 140 0;
+  --bad: 205 55 55;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: 17 17 16;
+    --panel: 27 27 25;
+    --ink: 240 239 235;
+    --muted: 160 158 152;
+    --line: 52 52 49;
+    --accent: 96 160 240;
+    --good: 70 190 90;
+    --warn: 240 175 40;
+    --bad: 240 95 95;
+    color-scheme: dark;
+  }
+}
+
+html, body { background: rgb(var(--surface)); color: rgb(var(--ink)); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+.maplibregl-popup-content {
+  background: rgb(var(--panel)); color: rgb(var(--ink));
+  border: 1px solid rgb(var(--line)); border-radius: 10px; padding: 8px 10px; font-size: 12.5px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+}
+.maplibregl-popup-tip { display: none; }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+
+input[type="range"] { accent-color: rgb(var(--accent)); }
