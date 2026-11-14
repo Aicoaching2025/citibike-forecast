@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { query } from "./databricks";
 import { demo } from "./demo";
 import { env } from "./env";
-import type { CheckRow, HealthKpis, Outcome, Prediction, Snapshot, Source, WithSource } from "./types";
+import type { CheckRow, HealthKpis, Outcome, Prediction, Snapshot, Source, StationRef, WithSource } from "./types";
 
 /**
  * Data access. Every function returns { source, data } so the UI can label demo data.
@@ -27,6 +27,17 @@ const liveLatest = unstable_cache(
       LEFT JOIN ${S()}.live_station_info i USING (station_id)`),
   ["latest-predictions"],
   { revalidate: 60, tags: ["predictions"] },
+);
+
+// Every station in the network (about 2,500), refreshed by the collector each run.
+const liveStations = unstable_cache(
+  async () =>
+    query<StationRef>(`
+      SELECT station_id, name, lat, lon
+      FROM ${S()}.live_station_info
+      WHERE name IS NOT NULL AND lat IS NOT NULL AND lon IS NOT NULL`),
+  ["all-stations"],
+  { revalidate: 3600, tags: ["stations"] },
 );
 
 const liveOutcomes = unstable_cache(
@@ -81,6 +92,13 @@ const liveHealth = unstable_cache(
 
 export async function getLatest(): Promise<WithSource<Prediction[]>> {
   return { source: source(), data: env().demo ? demo.latest() : await liveLatest() };
+}
+export async function getAllStations(): Promise<WithSource<StationRef[]>> {
+  if (env().demo) {
+    const data = demo.latest().map((p) => ({ station_id: p.station_id, name: p.name ?? p.station_id, lat: p.lat as number, lon: p.lon as number }));
+    return { source: source(), data };
+  }
+  return { source: source(), data: await liveStations() };
 }
 export async function getOutcomes(): Promise<WithSource<Outcome[]>> {
   return { source: source(), data: env().demo ? demo.outcomes() : await liveOutcomes() };

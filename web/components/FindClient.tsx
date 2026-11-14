@@ -1,13 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import type { Mode, Prediction } from "@/lib/types";
 import { HORIZON_MIN, WALK_M_PER_MIN, rankStations, scoreStations } from "@/lib/metrics";
 import { ago, fmtFull, fmtTime, pct, plus15 } from "@/lib/format";
 import { Card, Pill, Segmented } from "./ui";
 import type { MapPoint } from "./StationMap";
+import type { SearchHit } from "@/lib/search";
 
 const StationMap = dynamic(() => import("./StationMap"), { ssr: false, loading: () => <div className="h-[460px] animate-pulse rounded-xl bg-line/50" /> });
 
@@ -22,7 +23,7 @@ export function FindClient({ predictions }: { predictions: Prediction[] }) {
   }, [located]);
 
   const [mode, setMode] = useState<Mode>("bike");
-  const [start, setStart] = useState<{ lat: number; lon: number; label: string }>({ ...centroid, label: "Map centre" });
+  const [start, setStart] = useState<{ lat: number; lon: number; label: string; uncovered?: boolean }>({ ...centroid, label: "Map centre" });
   const [radius, setRadius] = useState(800);
   const [query, setQuery] = useState("");
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -48,10 +49,36 @@ export function FindClient({ predictions }: { predictions: Prediction[] }) {
     [all, best, need, unit],
   );
 
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q.length < 2 ? [] : located.filter((p) => (p.name ?? "").toLowerCase().includes(q)).slice(0, 8);
-  }, [query, located]);
+  // Search every station in the network (server-side), not just the forecast ones,
+  // so a rider can find their own station even when DockCast does not forecast it yet.
+  const [matches, setMatches] = useState<SearchHit[]>([]);
+  const [searched, setSearched] = useState(false);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setMatches([]);
+      setSearched(false);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        const body = (await r.json()) as { data?: SearchHit[] };
+        setMatches(body.data ?? []);
+      } catch {
+        if (!ctrl.signal.aborted) setMatches([]);
+      } finally {
+        if (!ctrl.signal.aborted) setSearched(true);
+      }
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [query]);
+
+  const nearest = useMemo(() => [...all].sort((a, b) => a.distanceM - b.distanceM)[0], [all]);
 
   const predTime = predictions[0]?.prediction_time_utc;
   const scoredAt = predictions[0]?.scored_at;
@@ -98,21 +125,25 @@ export function FindClient({ predictions }: { predictions: Prediction[] }) {
                 className="w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[14px] outline-none focus:border-accent"
               />
               {matches.length > 0 && (
-                <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-line bg-panel py-1 shadow-card">
+                <ul className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-line bg-panel py-1 shadow-card">
                   {matches.map((m) => (
                     <li key={m.station_id}>
                       <button
-                        className="w-full px-3.5 py-2 text-left text-[13.5px] hover:bg-line/50"
+                        className="flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-[13.5px] hover:bg-line/50"
                         onClick={() => {
-                          setStart({ lat: m.lat as number, lon: m.lon as number, label: m.name ?? m.station_id });
+                          setStart({ lat: m.lat, lon: m.lon, label: m.name, uncovered: !m.covered });
                           setQuery("");
                         }}
                       >
-                        {m.name}
+                        <span className="truncate">{m.name}</span>
+                        {!m.covered && <span className="shrink-0 text-[11.5px] text-muted">no forecast yet</span>}
                       </button>
                     </li>
                   ))}
                 </ul>
+              )}
+              {searched && matches.length === 0 && query.trim().length >= 2 && (
+                <p className="mt-2 text-[12.5px] text-muted">No Citi Bike station matches “{query.trim()}”. Try a cross street, e.g. “Bedford N 7”.</p>
               )}
             </div>
             <div className="mt-3 flex items-center justify-between gap-3 text-[13px]">
@@ -122,10 +153,15 @@ export function FindClient({ predictions }: { predictions: Prediction[] }) {
               </button>
             </div>
             {geoError && <p className="mt-2 text-[12.5px] text-bad">{geoError}</p>}
+            {start.uncovered && (
+              <p className="mt-2 rounded-lg bg-warn/10 px-3 py-2 text-[12.5px] text-ink">
+                DockCast doesn’t forecast <span className="font-medium">{start.label}</span> yet. It currently forecasts a sample of {located.length} stations; the nearest ones are shown below.
+              </p>
+            )}
             <label className="mt-5 block text-[13px] font-medium" htmlFor="radius">
               Walking distance: {radius} m <span className="font-normal text-muted">(~{Math.round(radius / WALK_M_PER_MIN)} min)</span>
             </label>
-            <input id="radius" type="range" min={200} max={2000} step={100} value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="mt-2 w-full" />
+            <input id="radius" type="range" min={200} max={5000} step={100} value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="mt-2 w-full" />
           </Card>
 
           {best ? (
@@ -137,7 +173,17 @@ export function FindClient({ predictions }: { predictions: Prediction[] }) {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-line bg-panel p-5 text-[14px] text-muted">No covered stations within that distance. Try walking a little farther.</div>
+            <div className="rounded-2xl border border-line bg-panel p-5 text-[14px] text-muted">
+              No forecast stations within {radius} m.
+              {nearest && (
+                <>
+                  {" "}The nearest is <span className="font-medium text-ink">{nearest.name}</span>, about {Math.round(nearest.walkMin)} min away ({pct(nearest.chance)} chance of a {need}).
+                  <button onClick={() => setRadius(Math.min(5000, Math.ceil((nearest.distanceM + 50) / 100) * 100))} className="mt-3 block rounded-lg border border-line px-2.5 py-1 text-[13px] font-medium text-ink hover:bg-line/50">
+                    Widen to include it
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 

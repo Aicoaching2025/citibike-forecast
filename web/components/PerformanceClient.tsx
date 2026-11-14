@@ -65,9 +65,9 @@ export function PerformanceClient({ initial }: { initial: Record<Target, Summary
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Does the model beat “nothing changes”?</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Does the model outperform the persistence baseline?</h1>
           <p className="mt-1 text-[14px] text-muted">
-            Every forecast from the last {s.windowHours} hours, checked against what each station reported 15 minutes later ({s.rows.toLocaleString()} forecasts).
+            Persistence predicts that every station will be in the same state in 15 minutes as it is now. Below, every forecast from the last {s.windowHours} hours ({s.rows.toLocaleString()}) is checked against what each station actually reported 15 minutes later.
           </p>
         </div>
         <Segmented<Target>

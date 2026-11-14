@@ -69,3 +69,11 @@ export interface WithSource<T> {
   source: Source;
   data: T;
 }
+
+/** Any Citi Bike station, forecast or not (for search). */
+export interface StationRef {
+  station_id: string;
+  name: string;
+  lat: number;
+  lon: number;
+}
