@@ -1,0 +1,12 @@
+command: ["streamlit", "run", "app.py"]
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse        # the app resource key; add the SQL warehouse under that key
+  - name: CITIBIKE_SCHEMA
+    value: workspace.citibike
+  - name: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+    value: "false"
+  - name: STREAMLIT_MAPBOX_TOKEN          # placeholder; Carto base maps need no token (stops a token fetch)
+    value: not-used-carto-basemap
+  - name: STREAMLIT_THEME_PRIMARY_COLOR
+    value: "#2a78d6"
