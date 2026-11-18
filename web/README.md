@@ -28,7 +28,9 @@ GBFS feed ─► citibike_collect (5 min) ─► live_station_status
 - Results are cached 60–120 s per instance plus CDN caching on the API routes, so page traffic does not keep the warehouse awake.
 - `DEMO_MODE=1` serves deterministic synthetic data with a visible banner — use it for previews and sales demos.
 
-Tables read (schema from `CITIBIKE_SCHEMA`): `predictions`, `live_outcomes`, `live_station_status`, `collector_runs`, `monitoring_log`.
+Tables read (schema from `CITIBIKE_SCHEMA`): `predictions`, `live_outcomes`, `live_station_status`, `live_station_info`, `collector_runs`, `monitoring_log`, and optionally `analysis_weather` (notebook 09: "Does weather help?" card on Model performance).
+
+Optional live weather on the Find page reads `WEATHER_FORECAST_TABLE` (default `workspace.default.weather_forecast_history`, filled hourly by the team's `11_collect_area_forecasts`). Optional panels hide themselves when their table is missing.
 
 ## Run locally
 

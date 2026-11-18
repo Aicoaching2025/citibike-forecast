@@ -1,4 +1,4 @@
-import { getOutcomes } from "@/lib/data";
+import { getOutcomes, getWeatherExperiment } from "@/lib/data";
 import { summarize } from "@/lib/performance";
 import { PerformanceClient } from "@/components/PerformanceClient";
 import { DemoBanner, ErrorState } from "@/components/ui";
@@ -8,12 +8,12 @@ export const metadata = { title: "Model performance" };
 
 export default async function Page() {
   try {
-    const { source, data } = await getOutcomes();
+    const [{ source, data }, weather] = await Promise.all([getOutcomes(), getWeatherExperiment()]);
     if (data.length === 0) return <ErrorState message="No forecasts with known outcomes yet. Outcomes appear 15 minutes after each forecast." />;
     return (
       <>
         {source === "demo" && <DemoBanner />}
-        <PerformanceClient initial={{ empty: summarize(data, "empty"), full: summarize(data, "full") }} />
+        <PerformanceClient initial={{ empty: summarize(data, "empty"), full: summarize(data, "full") }} weather={weather} />
       </>
     );
   } catch (e) {

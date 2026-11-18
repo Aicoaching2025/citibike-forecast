@@ -1,4 +1,4 @@
-import { getLatest } from "@/lib/data";
+import { getCurrentWeather, getLatest } from "@/lib/data";
 import { FindClient } from "@/components/FindClient";
 import { DemoBanner, ErrorState } from "@/components/ui";
 
@@ -6,11 +6,11 @@ export const dynamic = "force-dynamic"; // render per request; data itself is ca
 
 export default async function Page() {
   try {
-    const { source, data } = await getLatest();
+    const [{ source, data }, weather] = await Promise.all([getLatest(), getCurrentWeather()]);
     return (
       <>
         {source === "demo" && <DemoBanner />}
-        <FindClient predictions={data} />
+        <FindClient predictions={data} weather={weather} />
       </>
     );
   } catch (e) {

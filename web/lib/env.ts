@@ -9,6 +9,11 @@ const Schema = z.object({
   DATABRICKS_WAREHOUSE_ID: z.string().regex(/^[A-Za-z0-9]+$/).optional(),
   CITIBIKE_SCHEMA: z.string().regex(Identifier, "CITIBIKE_SCHEMA must be catalog.schema").default("workspace.citibike"),
   DEMO_MODE: z.enum(["0", "1"]).default("0"),
+  // Optional live forecasts from the team's area forecast collector (catalog.schema.table).
+  WEATHER_FORECAST_TABLE: z
+    .string()
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$/, "WEATHER_FORECAST_TABLE must be catalog.schema.table")
+    .default("workspace.default.weather_forecast_history"),
 });
 
 export type ServerEnv = z.infer<typeof Schema> & { demo: boolean };
@@ -24,6 +29,7 @@ export function env(): ServerEnv {
     DATABRICKS_WAREHOUSE_ID: process.env.DATABRICKS_WAREHOUSE_ID || undefined,
     CITIBIKE_SCHEMA: process.env.CITIBIKE_SCHEMA || undefined,
     DEMO_MODE: process.env.DEMO_MODE || undefined,
+    WEATHER_FORECAST_TABLE: process.env.WEATHER_FORECAST_TABLE || undefined,
   });
   const demo = parsed.DEMO_MODE === "1";
   if (!demo && (!parsed.DATABRICKS_HOST || !parsed.DATABRICKS_TOKEN || !parsed.DATABRICKS_WAREHOUSE_ID)) {

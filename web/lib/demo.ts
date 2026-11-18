@@ -1,6 +1,6 @@
 import { z } from "zod";
 import realStations from "@/data/stations.json";
-import type { CheckRow, HealthKpis, Outcome, Prediction, Snapshot } from "./types";
+import type { CheckRow, CurrentWeather, HealthKpis, Outcome, Prediction, Snapshot, WeatherExperimentRow } from "./types";
 
 // Optional real station list (id, name, lat, lon, capacity) exported from live_station_info.
 // When present, demo mode places synthetic counts on real stations; otherwise it invents them.
@@ -125,7 +125,21 @@ function get(): Built {
   return built;
 }
 
+// Shape of notebook 09 output (values from the Nov 18 run, for preview only).
+const WEATHER_DEMO: WeatherExperimentRow[] = [
+  { target: "empty", variant: "hgb_no_weather", test_pr_auc: 0.881, test_brier: 0.0114, test_brier_skill_vs_persistence: 0.132, test_onset_caught: 82, test_onset_events: 493, d_pr_auc_mean: 0.001, d_pr_auc_lo: -0.0014, d_pr_auc_hi: 0.0035, d_brier_mean: -0.00026, d_brier_lo: -0.00046, d_brier_hi: -0.00009 },
+  { target: "empty", variant: "hgb_weather", test_pr_auc: 0.882, test_brier: 0.0112, test_brier_skill_vs_persistence: 0.153, test_onset_caught: 67, test_onset_events: 493, d_pr_auc_mean: 0.001, d_pr_auc_lo: -0.0014, d_pr_auc_hi: 0.0035, d_brier_mean: -0.00026, d_brier_lo: -0.00046, d_brier_hi: -0.00009 },
+  { target: "full", variant: "hgb_no_weather", test_pr_auc: 0.974, test_brier: 0.0312, test_brier_skill_vs_persistence: 0.152, test_onset_caught: 24, test_onset_events: 1318, d_pr_auc_mean: -0.00004, d_pr_auc_lo: -0.00028, d_pr_auc_hi: 0.00043, d_brier_mean: -0.00009, d_brier_lo: -0.0002, d_brier_hi: 0.00003 },
+  { target: "full", variant: "hgb_weather", test_pr_auc: 0.974, test_brier: 0.0311, test_brier_skill_vs_persistence: 0.155, test_onset_caught: 19, test_onset_events: 1318, d_pr_auc_mean: -0.00004, d_pr_auc_lo: -0.00028, d_pr_auc_hi: 0.00043, d_brier_mean: -0.00009, d_brier_lo: -0.0002, d_brier_hi: 0.00003 },
+];
+
 export const demo = {
+  weatherExperiment: (): WeatherExperimentRow[] => WEATHER_DEMO,
+  currentWeather: (): CurrentWeather => {
+    const now = new Date();
+    const hour = new Date(Math.floor(now.getTime() / 3_600_000) * 3_600_000);
+    return { valid_at: hour.toISOString(), retrieved_at: new Date(now.getTime() - 25 * 60_000).toISOString(), temperature_c: 9.4, precipitation_mm: 0.3, wind_kmh: 17, locations: 12 };
+  },
   latest: (): Prediction[] => get().latest,
   outcomes: (): Outcome[] => get().outcomes,
   history: (id: string): Snapshot[] => get().history.get(id) ?? [],

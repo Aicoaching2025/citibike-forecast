@@ -4,7 +4,8 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 import type { replay, stationDetail, summarize } from "@/lib/performance";
-import type { Target } from "@/lib/types";
+import type { Target, WeatherExperimentRow } from "@/lib/types";
+import { WeatherCard } from "./WeatherCard";
 import { fmtDayTime, fmtFull, fmtTime, pct, plus15 } from "@/lib/format";
 import { Card, Segmented, Stat } from "./ui";
 import { useJson } from "./useJson";
@@ -25,7 +26,7 @@ const CAT = {
 
 const AXIS = { fontSize: 11.5, fill: "rgb(var(--muted))" };
 
-export function PerformanceClient({ initial }: { initial: Record<Target, Summary> }) {
+export function PerformanceClient({ initial, weather }: { initial: Record<Target, Summary>; weather: WeatherExperimentRow[] | null }) {
   const [target, setTarget] = useState<Target>("empty");
   const s = initial[target];
   const [model, pers] = s.scoreboard;
@@ -168,6 +169,8 @@ export function PerformanceClient({ initial }: { initial: Record<Target, Summary
           <p className="text-[12.5px] text-muted">Dots on the dashed line are perfectly calibrated. Larger dots hold more forecasts.</p>
         </Card>
       </div>
+
+      {weather && <WeatherCard rows={weather} />}
     </div>
   );
 }

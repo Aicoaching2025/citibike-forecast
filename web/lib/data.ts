@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { query } from "./databricks";
 import { demo } from "./demo";
 import { env } from "./env";
-import type { CheckRow, HealthKpis, Outcome, Prediction, Snapshot, Source, StationRef, WithSource } from "./types";
+import type { CheckRow, HealthKpis, Outcome, Prediction, Snapshot, Source, StationRef, WithSource, WeatherExperimentRow, CurrentWeather } from "./types";
 
 /**
  * Data access. Every function returns { source, data } so the UI can label demo data.
@@ -89,6 +89,60 @@ const liveHealth = unstable_cache(
   ["health"],
   { revalidate: 60, tags: ["health"] },
 );
+
+// Optional panels: a missing table (experiment not run, collector not scheduled) hides the panel
+// instead of breaking the page.
+async function optional<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
+  try {
+    return await fn();
+  } catch (e) {
+    console.warn(`[optional:${label}]`, e instanceof Error ? e.message.slice(0, 300) : e);
+    return null;
+  }
+}
+
+const liveWeatherExperiment = unstable_cache(
+  async () =>
+    query<WeatherExperimentRow>(`
+      SELECT target, variant, test_pr_auc, test_brier, test_brier_skill_vs_persistence,
+             test_onset_caught, test_onset_events,
+             d_pr_auc_mean, d_pr_auc_lo, d_pr_auc_hi, d_brier_mean, d_brier_lo, d_brier_hi
+      FROM ${S()}.analysis_weather
+      ORDER BY target, variant`),
+  ["weather-experiment"],
+  { revalidate: 3600, tags: ["weather"] },
+);
+
+const liveCurrentWeather = unstable_cache(
+  async () => {
+    const rows = await query<CurrentWeather>(`
+      WITH f AS (
+        SELECT * FROM ${env().WEATHER_FORECAST_TABLE}
+        WHERE valid_at_utc = date_trunc('HOUR', current_timestamp())
+          AND retrieved_at_utc <= current_timestamp()
+          AND retrieved_at_utc >= current_timestamp() - INTERVAL 6 HOURS
+      ),
+      latest AS (SELECT forecast_location_id, MAX(retrieved_at_utc) AS r FROM f GROUP BY forecast_location_id)
+      SELECT MAX(f.valid_at_utc) AS valid_at, MAX(f.retrieved_at_utc) AS retrieved_at,
+             AVG(f.temperature_2m) AS temperature_c, AVG(f.precipitation) AS precipitation_mm,
+             AVG(f.wind_speed_10m) AS wind_kmh, COUNT(*) AS locations
+      FROM f JOIN latest l ON f.forecast_location_id = l.forecast_location_id AND f.retrieved_at_utc = l.r`);
+    const w = rows[0];
+    return w && w.locations > 0 && w.temperature_c !== null ? w : null;
+  },
+  ["current-weather"],
+  { revalidate: 900, tags: ["weather"] },
+);
+
+export async function getWeatherExperiment(): Promise<WeatherExperimentRow[] | null> {
+  if (env().demo) return demo.weatherExperiment();
+  const rows = await optional("weather-experiment", liveWeatherExperiment);
+  return rows && rows.length === 4 ? rows : null;
+}
+export async function getCurrentWeather(): Promise<CurrentWeather | null> {
+  if (env().demo) return demo.currentWeather();
+  return optional("current-weather", liveCurrentWeather);
+}
 
 export async function getLatest(): Promise<WithSource<Prediction[]>> {
   return { source: source(), data: env().demo ? demo.latest() : await liveLatest() };

@@ -77,3 +77,30 @@ export interface StationRef {
   lat: number;
   lon: number;
 }
+
+/** One row of analysis_weather (notebook 09): a target x variant with paired-bootstrap deltas. */
+export interface WeatherExperimentRow {
+  target: Target;
+  variant: "hgb_no_weather" | "hgb_weather";
+  test_pr_auc: number;
+  test_brier: number;
+  test_brier_skill_vs_persistence: number;
+  test_onset_caught: number;
+  test_onset_events: number;
+  d_pr_auc_mean: number;
+  d_pr_auc_lo: number;
+  d_pr_auc_hi: number;
+  d_brier_mean: number;
+  d_brier_lo: number;
+  d_brier_hi: number;
+}
+
+/** Latest hourly forecast for the current hour, averaged over forecast areas (Maxfield's collector). */
+export interface CurrentWeather {
+  valid_at: string;
+  retrieved_at: string;
+  temperature_c: number;
+  precipitation_mm: number;
+  wind_kmh: number;
+  locations: number;
+}

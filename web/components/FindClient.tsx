@@ -9,13 +9,15 @@ import { ago, fmtFull, fmtTime, pct, plus15 } from "@/lib/format";
 import { Card, Pill, Segmented } from "./ui";
 import type { MapPoint } from "./StationMap";
 import type { SearchHit } from "@/lib/search";
+import type { CurrentWeather } from "@/lib/types";
+import { describeWeather } from "@/lib/weather";
 
 const StationMap = dynamic(() => import("./StationMap"), { ssr: false, loading: () => <div className="h-[460px] animate-pulse rounded-xl bg-line/50" /> });
 
 const chanceColor = (c: number) => (c >= 0.8 ? "#0c8c0c" : c >= 0.5 ? "#d68c00" : "#cd3737");
 const chanceTone = (c: number): "good" | "warn" | "bad" => (c >= 0.8 ? "good" : c >= 0.5 ? "warn" : "bad");
 
-export function FindClient({ predictions }: { predictions: Prediction[] }) {
+export function FindClient({ predictions, weather }: { predictions: Prediction[]; weather: CurrentWeather | null }) {
   const located = useMemo(() => predictions.filter((p) => p.lat !== null && p.lon !== null), [predictions]);
   const centroid = useMemo(() => {
     const n = located.length || 1;
@@ -101,6 +103,13 @@ export function FindClient({ predictions }: { predictions: Prediction[] }) {
           <p className="mt-1 text-[14px] text-muted">
             Forecast for {predTime ? fmtFull(plus15(predTime)) : "—"} · updated {ago(scoredAt)} · {located.length} stations covered
           </p>
+          {weather && (
+            <p className="mt-1.5 inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-[12.5px] text-muted">
+              <span className="font-medium text-ink">Weather now</span>
+              {describeWeather(weather)}
+              <span>· forecast updated {ago(weather.retrieved_at)}</span>
+            </p>
+          )}
         </div>
         <Segmented<Mode>
           label="I need"
